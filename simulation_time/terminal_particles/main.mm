@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <unistd.h>
 
 struct Particle {
     float x;
@@ -53,42 +54,50 @@ int main()
                                options:MTLResourceStorageModeShared];
 
         id<MTLCommandQueue> queue = [device newCommandQueue];
-        id<MTLCommandBuffer> commandBuffer = [queue commandBuffer];
-        id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
 
-        [encoder setComputePipelineState:pipeline];
-        [encoder setBuffer:buffer offset:0 atIndex:0];
-
-        [encoder dispatchThreads:MTLSizeMake(N, 1, 1)
-           threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
-
-        [encoder endEncoding];
-        [commandBuffer commit];
-        [commandBuffer waitUntilCompleted];
-
-        Particle *out = (Particle *)[buffer contents];
-
-        char screen[H][W];
-
-        for(int y = 0; y < H; y++)
-            for(int x = 0; x < W; x++)
-                screen[y][x] = '.';
-
-        for(int i = 0; i < N; i++)
+        for(int frame = 0; frame < 60; frame++)
         {
-            int x = (int)round(out[i].x);
-            int y = (int)round(out[i].y);
+            id<MTLCommandBuffer> commandBuffer = [queue commandBuffer];
+            id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
 
-            if(x >= 0 && x < W && y >= 0 && y < H)
-                screen[y][x] = '*';
-        }
+            [encoder setComputePipelineState:pipeline];
+            [encoder setBuffer:buffer offset:0 atIndex:0];
 
-        for(int y = 0; y < H; y++)
-        {
-            for(int x = 0; x < W; x++)
-                std::cout << screen[y][x];
+            [encoder dispatchThreads:MTLSizeMake(N, 1, 1)
+               threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
 
-            std::cout << "\n";
+            [encoder endEncoding];
+            [commandBuffer commit];
+            [commandBuffer waitUntilCompleted];
+
+            Particle *out = (Particle *)[buffer contents];
+
+            char screen[H][W];
+
+            for(int y = 0; y < H; y++)
+                for(int x = 0; x < W; x++)
+                    screen[y][x] = '.';
+
+            for(int i = 0; i < N; i++)
+            {
+                int x = (int)round(out[i].x);
+                int y = (int)round(out[i].y);
+
+                if(x >= 0 && x < W && y >= 0 && y < H)
+                    screen[y][x] = '*';
+            }
+
+            std::cout << "\033[2J\033[H";
+
+            for(int y = 0; y < H; y++)
+            {
+                for(int x = 0; x < W; x++)
+                    std::cout << screen[y][x];
+
+                std::cout << "\n";
+            }
+
+            usleep(80000);
         }
     }
 
